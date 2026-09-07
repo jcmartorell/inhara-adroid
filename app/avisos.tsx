@@ -51,6 +51,12 @@ export default function AvisosScreen() {
 
     setAvisos(data ?? []);
     setLoading(false);
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      await supabase.from('notificaciones').update({ leida: true })
+        .eq('user_id', session.user.id).eq('leida', false);
+    }
   }
 
   if (loading) {

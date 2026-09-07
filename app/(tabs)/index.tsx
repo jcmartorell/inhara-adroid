@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { C } from '../../constants/colors';
 import { getNivel, getProgresoPct } from '../../lib/camino';
+import { registrarPushToken } from '../../lib/notifications';
 import type { Profile, Suscripcion } from '../../lib/models';
 
 interface ReservaProxima {
@@ -39,6 +40,7 @@ export default function DashboardScreen() {
   const [susActiva, setSusActiva] = useState<Suscripcion | null>(null);
   const [planNombre, setPlanNombre] = useState('');
   const [reservasProximas, setReservasProximas] = useState<ReservaProxima[]>([]);
+  const [notisSinLeer, setNotisSinLeer] = useState<{ id: string; titulo: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [cancelando, setCancelando] = useState<string | null>(null);
@@ -49,16 +51,19 @@ export default function DashboardScreen() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
     const userId = session.user.id;
+    registrarPushToken(userId);
 
-    const [{ data: prof }, { data: asist }, { data: sus }, { data: reservas }] = await Promise.all([
+    const [{ data: prof }, { data: asist }, { data: sus }, { data: reservas }, { data: notis }] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', userId).limit(1),
       supabase.from('asistencias').select('id').eq('user_id', userId),
       supabase.from('suscripciones').select('*').eq('user_id', userId).eq('estado', 'activo').limit(1),
       supabase.from('reservas').select('id, clase_id, estado').eq('user_id', userId).eq('estado', 'confirmada'),
+      supabase.from('notificaciones').select('id, titulo').eq('user_id', userId).eq('leida', false).order('created_at', { ascending: false }),
     ]);
 
     if (prof?.[0]) setProfile(prof[0]);
     setTotalClases(asist?.length ?? 0);
+    setNotisSinLeer(notis ?? []);
 
     const susData = sus?.[0] ?? null;
     setSusActiva(susData);
@@ -140,6 +145,20 @@ export default function DashboardScreen() {
           </View>
         </View>
       </View>
+
+      {/* Avisos sin leer */}
+      {notisSinLeer.length > 0 && (
+        <TouchableOpacity style={styles.notiBanner} onPress={() => router.push('/avisos')} activeOpacity={0.85}>
+          <Ionicons name="notifications" size={18} color="#fff" />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.notiBannerTitulo}>
+              {notisSinLeer.length === 1 ? 'Tienes 1 aviso nuevo' : `Tienes ${notisSinLeer.length} avisos nuevos`}
+            </Text>
+            <Text style={styles.notiBannerSub} numberOfLines={1}>{notisSinLeer[0].titulo}</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color="#ffffff99" />
+        </TouchableOpacity>
+      )}
 
       {/* Paquete activo */}
       <View style={styles.paqueteCard}>
@@ -244,6 +263,13 @@ const styles = StyleSheet.create({
   lealtadBtnLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   lealtadBtnTitulo: { fontSize: 15, fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', color: C.gold },
   lealtadBtnSub: { fontSize: 11, color: C.gold + '77', marginTop: 1 },
+
+  notiBanner: {
+    backgroundColor: C.accent, borderRadius: 12, padding: 14,
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+  },
+  notiBannerTitulo: { fontSize: 13, fontWeight: '600', color: '#fff' },
+  notiBannerSub: { fontSize: 11, color: '#ffffffcc', marginTop: 1 },
 
   paqueteCard: {
     backgroundColor: C.white, borderRadius: 14, padding: 18,
