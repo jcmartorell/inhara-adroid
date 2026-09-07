@@ -55,7 +55,8 @@ export interface NivelCamino {
   rangoMin: number;
   rangoMax: number;
   frecuencia: string;
-  ensenanza: string;
   patanjali: string;
+  intro: string;
   descripcion: string;
+  ensenanza: string;
 }

@@ -51,7 +51,7 @@ export default function CaminoScreen() {
     <ScrollView style={styles.root} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       {/* Hero nivel actual */}
       <View style={styles.hero}>
-        <Text style={styles.heroBadge}>NIVEL {nivel.num} DE 9 · {nivel.patanjali.toUpperCase()}</Text>
+        <Text style={styles.heroBadge}>NIVEL {nivel.num} DE 11 · {nivel.patanjali.toUpperCase()}</Text>
         <Text style={styles.heroNombre}>{nivel.nombre}</Text>
         <Text style={styles.heroDesc}>{nivel.descripcion}</Text>
         <View style={styles.progressBg}>
@@ -111,7 +111,7 @@ export default function CaminoScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.nivelNombre, bloqueado && styles.textMuted]}>{n.nombre}</Text>
                   <Text style={[styles.nivelRango, bloqueado && styles.textMuted]}>
-                    {n.rangoMin}–{n.rangoMax === 9999 ? '∞' : n.rangoMax} clases · {n.frecuencia}
+                    {n.rangoMin}–{n.rangoMax >= 9999 ? '∞' : n.rangoMax} clases · {n.frecuencia}
                   </Text>
                 </View>
                 <Text style={styles.chevron}>{isExpanded ? '▲' : '▼'}</Text>

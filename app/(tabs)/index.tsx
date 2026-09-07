@@ -209,7 +209,7 @@ export default function DashboardScreen() {
       <View style={styles.nivelCard}>
         <View style={styles.nivelHeader}>
           <View>
-            <Text style={styles.nivelBadge}>EL CAMINO · NIVEL {nivel.num} DE 9</Text>
+            <Text style={styles.nivelBadge}>EL CAMINO · NIVEL {nivel.num} DE 11</Text>
             <Text style={styles.nivelNombre}>{nivel.nombre}</Text>
           </View>
           <Text style={styles.nivelPct}>{Math.round(pct)}%</Text>
