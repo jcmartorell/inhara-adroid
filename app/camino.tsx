@@ -88,7 +88,7 @@ export default function CaminoScreen() {
         {NIVELES.map((n, idx) => {
           const completado = totalClases > n.rangoMax;
           const actual = n.num === nivel.num;
-          const bloqueado = totalClases < n.rangoMin;
+          const bloqueado = n.num > nivel.num;
           const isExpanded = expandido === n.num;
 
           return (
@@ -117,11 +117,18 @@ export default function CaminoScreen() {
                 <Text style={styles.chevron}>{isExpanded ? '▲' : '▼'}</Text>
               </TouchableOpacity>
 
-              {isExpanded && (
+              {isExpanded && !bloqueado && (
                 <View style={styles.expandido}>
                   <Text style={styles.expandidoPatanjali}>{n.patanjali}</Text>
                   <Text style={styles.expandidoDesc}>{n.descripcion}</Text>
                   <Text style={styles.expandidoEnsenanza}>&ldquo;{n.ensenanza}&rdquo;</Text>
+                </View>
+              )}
+              {isExpanded && bloqueado && (
+                <View style={styles.expandidoBloqueado}>
+                  <Text style={styles.expandidoBloqueadoText}>
+                    🔒 Desbloquea este nivel al llegar a {n.rangoMin} clases
+                  </Text>
                 </View>
               )}
               {idx < NIVELES.length - 1 && <View style={styles.divider} />}
@@ -217,6 +224,8 @@ const styles = StyleSheet.create({
   chevron: { fontSize: 10, color: C.textSoft },
 
   expandido: { paddingHorizontal: 62, paddingBottom: 14, gap: 6 },
+  expandidoBloqueado: { paddingHorizontal: 62, paddingBottom: 14 },
+  expandidoBloqueadoText: { fontSize: 12, color: C.textMuted, fontStyle: 'italic' },
   expandidoPatanjali: { fontSize: 11, fontWeight: '600', color: C.accent, letterSpacing: 0.5 },
   expandidoDesc: { fontSize: 13, color: C.textSoft, lineHeight: 18 },
   expandidoEnsenanza: { fontSize: 12, fontStyle: 'italic', color: C.textMuted },
