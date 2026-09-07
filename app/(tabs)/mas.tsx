@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabase';
 
 const SECCIONES = [
   { emoji: '🧘', titulo: 'El Camino', subtitulo: '9 niveles de práctica', ruta: '/camino' },
-  { emoji: '🤍', titulo: 'Lealtad', subtitulo: 'Mat to Heart — beneficios y colaboraciones', ruta: '/lealtad' },
+  { emoji: '🤍', titulo: 'Beneficios', subtitulo: 'The Inhara Community Circle', ruta: '/lealtad' },
   { emoji: '🔔', titulo: 'Avisos', subtitulo: 'Noticias y comunicados de Inhara', ruta: '/avisos' },
 ];
 

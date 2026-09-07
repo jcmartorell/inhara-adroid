@@ -45,7 +45,7 @@ export default function RootLayout() {
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="camino" options={{ title: 'El Camino', ...headerStyle }} />
-        <Stack.Screen name="lealtad" options={{ title: 'Lealtad', ...headerStyle }} />
+        <Stack.Screen name="lealtad" options={{ title: 'Beneficios', ...headerStyle }} />
         <Stack.Screen name="avisos" options={{ title: 'Avisos', ...headerStyle }} />
       </Stack>
     </>

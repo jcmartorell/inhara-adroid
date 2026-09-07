@@ -142,6 +142,11 @@ export default function LealtadScreen() {
 
   return (
     <ScrollView style={styles.root} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitulo}>Beneficios</Text>
+        <Text style={styles.headerSubtitulo}>The Inhara Community Circle</Text>
+      </View>
+
       {upgradeMsg && (
         <View style={styles.upgradeBanner}>
           <Text style={styles.upgradeBannerText}>🎁 {upgradeMsg}</Text>
@@ -220,6 +225,15 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg },
   content: { padding: 16, gap: 14, paddingBottom: 32 },
   loadingContainer: { flex: 1, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center' },
+
+  header: { marginBottom: 4 },
+  headerTitulo: {
+    fontSize: 28,
+    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+    fontWeight: '300',
+    color: C.text,
+  },
+  headerSubtitulo: { fontSize: 13, color: C.textSoft, marginTop: 2 },
 
   upgradeBanner: {
     backgroundColor: C.accent,

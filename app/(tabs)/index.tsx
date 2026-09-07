@@ -160,8 +160,8 @@ export default function DashboardScreen() {
         <View style={styles.lealtadBtnLeft}>
           <Ionicons name="heart" size={20} color={C.gold} />
           <View>
-            <Text style={styles.lealtadBtnTitulo}>Mat to Heart</Text>
-            <Text style={styles.lealtadBtnSub}>Ver tus beneficios y colaboraciones</Text>
+            <Text style={styles.lealtadBtnTitulo}>Beneficios</Text>
+            <Text style={styles.lealtadBtnSub}>The Inhara Community Circle</Text>
           </View>
         </View>
         <Ionicons name="chevron-forward" size={18} color={C.gold + '88'} />
