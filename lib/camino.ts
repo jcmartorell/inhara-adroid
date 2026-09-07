@@ -94,7 +94,7 @@ export const NIVELES: NivelCamino[] = [
 export const PREMIUM_SLUGS = ['ilimitado', 'ilimitado-2', 'trimestral', 'semestral', 'anual'];
 
 export function getNivel(total: number): NivelCamino {
-  return NIVELES.find((n) => total >= n.rangoMin && total <= n.rangoMax) ?? NIVELES[NIVELES.length - 1];
+  return NIVELES.find((n) => total >= n.rangoMin && total <= n.rangoMax) ?? NIVELES[0];
 }
 
 export function getProgresoPct(total: number): number {
@@ -102,5 +102,5 @@ export function getProgresoPct(total: number): number {
   const siguiente = NIVELES.find((n) => n.num === nivel.num + 1);
   if (!siguiente) return 100;
   const rango = nivel.rangoMax - nivel.rangoMin;
-  return Math.min(100, ((total - nivel.rangoMin) / rango) * 100);
+  return Math.max(0, Math.min(100, ((total - nivel.rangoMin) / rango) * 100));
 }
