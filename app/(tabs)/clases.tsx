@@ -71,7 +71,8 @@ export default function ClasesScreen() {
       .gte('fecha', fechaHoy())
       .order('fecha')
       .order('hora');
-    setClases(data ?? []);
+    const ahora = Date.now();
+    setClases((data ?? []).filter((c) => new Date(`${c.fecha}T${c.hora}`).getTime() > ahora));
   }
 
   async function loadMaestras() {
@@ -99,6 +100,11 @@ export default function ClasesScreen() {
 
   async function reservar(clase: Clase) {
     if (!userId) return;
+    if (new Date(`${clase.fecha}T${clase.hora}`).getTime() <= Date.now()) {
+      Alert.alert('Clase ya iniciada', 'Esta clase ya empezó y no se puede reservar.');
+      await loadClases();
+      return;
+    }
     setProcesando(clase.id);
     const { error } = await supabase.from('reservas').insert({
       user_id: userId,
