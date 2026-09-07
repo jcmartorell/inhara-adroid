@@ -15,6 +15,7 @@ interface Clase {
   spots_disponibles: number;
   capacidad: number;
   ubicacion: string | null;
+  maestra_id: string | null;
 }
 
 interface Reserva {
@@ -45,6 +46,7 @@ function fechaHoy() {
 export default function ClasesScreen() {
   const [clases, setClases] = useState<Clase[]>([]);
   const [reservas, setReservas] = useState<Reserva[]>([]);
+  const [maestras, setMaestras] = useState<Record<string, string>>({});
   const [userId, setUserId] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -56,7 +58,7 @@ export default function ClasesScreen() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
     setUserId(session.user.id);
-    await Promise.all([loadClases(), loadReservas(session.user.id)]);
+    await Promise.all([loadClases(), loadReservas(session.user.id), loadMaestras()]);
     setLoading(false);
     setRefreshing(false);
   }
@@ -64,12 +66,21 @@ export default function ClasesScreen() {
   async function loadClases() {
     const { data } = await supabase
       .from('clases')
-      .select('id,titulo,fecha,hora,hora_fin,spots_disponibles,capacidad,ubicacion')
+      .select('id,titulo,fecha,hora,hora_fin,spots_disponibles,capacidad,ubicacion,maestra_id')
       .eq('activo', true)
       .gte('fecha', fechaHoy())
       .order('fecha')
       .order('hora');
     setClases(data ?? []);
+  }
+
+  async function loadMaestras() {
+    const { data } = await supabase.from('profiles').select('id,nombre').eq('rol', 'maestra');
+    const map: Record<string, string> = {};
+    for (const m of data ?? []) {
+      if (m.nombre) map[m.id] = m.nombre;
+    }
+    setMaestras(map);
   }
 
   async function loadReservas(uid: string) {
@@ -165,7 +176,7 @@ export default function ClasesScreen() {
                   </View>
                   <View style={styles.claseInfo}>
                     <Text style={styles.claseTitulo}>{clase.titulo}</Text>
-                    <Text style={styles.claseUbicacion}>{clase.ubicacion ?? 'Estudio Inhara'}</Text>
+                    <Text style={styles.claseUbicacion}>{maestras[clase.maestra_id ?? ''] ?? 'Estudio Inhara'}</Text>
                     <Text style={[styles.claseSpots, llena && styles.claseSpotsLlena]}>
                       {llena ? 'Sin lugares' : `${clase.spots_disponibles} lugar${clase.spots_disponibles !== 1 ? 'es' : ''}`}
                     </Text>

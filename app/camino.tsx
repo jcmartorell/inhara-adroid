@@ -65,7 +65,7 @@ export default function CaminoScreen() {
             </Text>
           )}
         </View>
-        <Text style={styles.heroEnsenanza}>"{nivel.ensenanza}"</Text>
+        <Text style={styles.heroEnsenanza}>&ldquo;{nivel.ensenanza}&rdquo;</Text>
       </View>
 
       {/* Stats personales */}
@@ -121,7 +121,7 @@ export default function CaminoScreen() {
                 <View style={styles.expandido}>
                   <Text style={styles.expandidoPatanjali}>{n.patanjali}</Text>
                   <Text style={styles.expandidoDesc}>{n.descripcion}</Text>
-                  <Text style={styles.expandidoEnsenanza}>"{n.ensenanza}"</Text>
+                  <Text style={styles.expandidoEnsenanza}>&ldquo;{n.ensenanza}&rdquo;</Text>
                 </View>
               )}
               {idx < NIVELES.length - 1 && <View style={styles.divider} />}

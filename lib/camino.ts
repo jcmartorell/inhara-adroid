@@ -9,7 +9,7 @@ export const NIVELES: NivelCamino[] = [
   { num: 6, nombre: 'Fluidez', rangoMin: 71, rangoMax: 110, frecuencia: '3–4 clases/semana', ensenanza: 'El cuerpo ya sabe.', patanjali: 'Pratyahara: Retiro de los sentidos', descripcion: 'La práctica se vuelve meditación en movimiento.' },
   { num: 7, nombre: 'Profundidad', rangoMin: 111, rangoMax: 160, frecuencia: '4 clases/semana', ensenanza: 'La profundidad se descubre.', patanjali: 'Dharana: Concentración', descripcion: 'La concentración es tu superpoder.' },
   { num: 8, nombre: 'Transformación', rangoMin: 161, rangoMax: 220, frecuencia: '4–5 clases/semana', ensenanza: 'Has cambiado. Y lo sabes.', patanjali: 'Dhyana: Meditación', descripcion: 'La meditación surge naturalmente.' },
-  { num: 9, nombre: 'Maestra Interior', rangoMin: 221, rangoMax: 9999, frecuencia: 'Como quieras', ensenanza: 'El camino sigue.', patanjali: 'Samadhi: Integración total', descripcion: 'La sabiduría que has acumulado ahora irradia.' },
+  { num: 9, nombre: 'Maestra/o Interior', rangoMin: 221, rangoMax: 9999, frecuencia: 'Como quieras', ensenanza: 'El camino sigue.', patanjali: 'Samadhi: Integración total', descripcion: 'La sabiduría que has acumulado ahora irradia.' },
 ];
 
 export const PREMIUM_SLUGS = ['ilimitado', 'ilimitado-2', 'trimestral', 'semestral', 'anual'];

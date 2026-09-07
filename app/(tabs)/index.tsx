@@ -217,7 +217,7 @@ export default function DashboardScreen() {
         <View style={styles.progressBg}>
           <View style={[styles.progressFill, { width: `${pct}%` }]} />
         </View>
-        <Text style={styles.nivelEnsenanza}>"{nivel.ensenanza}"</Text>
+        <Text style={styles.nivelEnsenanza}>&ldquo;{nivel.ensenanza}&rdquo;</Text>
       </View>
     </ScrollView>
   );

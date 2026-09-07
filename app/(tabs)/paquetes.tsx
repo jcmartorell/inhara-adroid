@@ -53,7 +53,7 @@ export default function PaquetesScreen() {
     if (!session) return;
 
     const [{ data: planesList }, { data: sus }] = await Promise.all([
-      supabase.from('planes').select('*').eq('activo', true).order('orden'),
+      supabase.from('planes').select('*').eq('activo', true).order('precio'),
       supabase.from('suscripciones').select('*').eq('user_id', session.user.id).eq('estado', 'activo').limit(1),
     ]);
 
@@ -111,13 +111,13 @@ export default function PaquetesScreen() {
           >
             {/* Header del plan */}
             <View style={styles.planHeader}>
-              <View>
+              <View style={styles.planInfo}>
                 <Text style={[styles.planNombre, isPremium && styles.planNombrePremium]}>{plan.nombre}</Text>
                 <Text style={[styles.planClases, isPremium && styles.planClasesPremium]}>
                   {isPremium ? 'Clases ilimitadas' : `${plan.clases_por_mes ?? 0} clases`}
                 </Text>
               </View>
-              <View style={{ alignItems: 'flex-end' }}>
+              <View style={styles.planPrecioBox}>
                 <Text style={[styles.planPrecio, isPremium && styles.planPrecioPremium]}>
                   ${plan.precio.toLocaleString('es-MX', { maximumFractionDigits: 0 })}
                 </Text>
@@ -211,12 +211,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 18,
   },
+  planInfo: { flex: 1, marginRight: 12 },
   planNombre: {
     fontSize: 20,
     fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
     color: C.text,
   },
   planNombrePremium: { color: C.gold },
+  planPrecioBox: { alignItems: 'flex-end', flexShrink: 0 },
   planClases: { fontSize: 12, color: C.textSoft, marginTop: 2 },
   planClasesPremium: { color: C.gold + '99' },
   planPrecio: {
