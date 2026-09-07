@@ -71,8 +71,7 @@ export default function ClasesScreen() {
       .gte('fecha', fechaHoy())
       .order('fecha')
       .order('hora');
-    const ahora = Date.now();
-    setClases((data ?? []).filter((c) => new Date(`${c.fecha}T${c.hora}`).getTime() > ahora));
+    setClases(data ?? []);
   }
 
   async function loadMaestras() {
@@ -172,9 +171,10 @@ export default function ClasesScreen() {
             const tieneReserva = reservas.some(r => r.clase_id === clase.id);
             const llena = clase.spots_disponibles <= 0 && !tieneReserva;
             const cargando = procesando === clase.id;
+            const pasada = new Date(`${clase.fecha}T${clase.hora}`).getTime() <= Date.now();
 
             return (
-              <View key={clase.id} style={[styles.claseCard, tieneReserva && styles.claseCardReservada]}>
+              <View key={clase.id} style={[styles.claseCard, tieneReserva && styles.claseCardReservada, pasada && styles.claseCardPasada]}>
                 <View style={styles.claseLeft}>
                   <View style={styles.horaBlock}>
                     <Text style={styles.hora}>{formatHora(clase.hora)}</Text>
@@ -184,7 +184,7 @@ export default function ClasesScreen() {
                     <Text style={styles.claseTitulo}>{clase.titulo}</Text>
                     <Text style={styles.claseUbicacion}>{maestras[clase.maestra_id ?? ''] ?? 'Estudio Inhara'}</Text>
                     <Text style={[styles.claseSpots, llena && styles.claseSpotsLlena]}>
-                      {llena ? 'Sin lugares' : `${clase.spots_disponibles} lugar${clase.spots_disponibles !== 1 ? 'es' : ''}`}
+                      {pasada ? 'Clase pasada' : llena ? 'Sin lugares' : `${clase.spots_disponibles} lugar${clase.spots_disponibles !== 1 ? 'es' : ''}`}
                     </Text>
                   </View>
                 </View>
@@ -193,15 +193,16 @@ export default function ClasesScreen() {
                   style={[
                     styles.btn,
                     tieneReserva ? styles.btnCancelar : llena ? styles.btnLlena : styles.btnReservar,
+                    pasada && styles.btnPasada,
                   ]}
                   onPress={() => tieneReserva ? cancelar(clase) : reservar(clase)}
-                  disabled={llena || cargando}
+                  disabled={llena || cargando || pasada}
                   activeOpacity={0.8}
                 >
                   {cargando
                     ? <ActivityIndicator color="#fff" size="small" />
-                    : <Text style={tieneReserva || llena ? styles.btnText : styles.btnTextWhite}>
-                        {tieneReserva ? 'Cancelar' : llena ? 'Llena' : 'Reservar'}
+                    : <Text style={tieneReserva || llena || pasada ? styles.btnText : styles.btnTextWhite}>
+                        {pasada ? 'Pasada' : tieneReserva ? 'Cancelar' : llena ? 'Llena' : 'Reservar'}
                       </Text>
                   }
                 </TouchableOpacity>
@@ -234,6 +235,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 }, elevation: 2,
   },
   claseCardReservada: { borderWidth: 2, borderColor: C.accent + '66', backgroundColor: '#FFFAF4' },
+  claseCardPasada: { opacity: 0.45 },
 
   claseLeft: { flexDirection: 'row', gap: 14, flex: 1 },
   horaBlock: { alignItems: 'center', minWidth: 42 },
@@ -253,6 +255,7 @@ const styles = StyleSheet.create({
   btnReservar: { backgroundColor: C.accent },
   btnCancelar: { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: C.accent },
   btnLlena: { backgroundColor: C.border },
+  btnPasada: { backgroundColor: C.border },
   btnTextWhite: { fontSize: 13, fontWeight: '600', color: '#fff' },
   btnText: { fontSize: 13, fontWeight: '600', color: C.accent },
 });
