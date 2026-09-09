@@ -4,6 +4,7 @@ import {
   TouchableOpacity, ActivityIndicator, RefreshControl, Alert,
 } from 'react-native';
 import { supabase } from '../../lib/supabase';
+import { reservarClase, cancelarReserva } from '../../lib/bookings';
 import { C } from '../../constants/colors';
 
 interface Clase {
@@ -105,13 +106,9 @@ export default function ClasesScreen() {
       return;
     }
     setProcesando(clase.id);
-    const { error } = await supabase.from('reservas').insert({
-      user_id: userId,
-      clase_id: clase.id,
-      estado: 'confirmada',
-    });
-    if (error) {
-      Alert.alert('Error', 'No se pudo completar la reservación.');
+    const { ok, error } = await reservarClase(clase.id);
+    if (!ok) {
+      Alert.alert('Error', error ?? 'No se pudo completar la reservación.');
     } else {
       await Promise.all([loadClases(), loadReservas(userId)]);
     }
@@ -128,7 +125,8 @@ export default function ClasesScreen() {
         text: 'Sí, cancelar', style: 'destructive',
         onPress: async () => {
           setProcesando(clase.id);
-          await supabase.from('reservas').update({ estado: 'cancelada' }).eq('id', reserva.id);
+          const { ok, error } = await cancelarReserva(reserva.id);
+          if (!ok) Alert.alert('Error', error ?? 'No se pudo cancelar la reservación.');
           await Promise.all([loadClases(), loadReservas(userId)]);
           setProcesando(null);
         },

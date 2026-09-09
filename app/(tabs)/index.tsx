@@ -6,6 +6,7 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
+import { cancelarReserva as cancelarReservaApi } from '../../lib/bookings';
 import { C } from '../../constants/colors';
 import { getNivel, getProgresoPct } from '../../lib/camino';
 import { registrarPushToken } from '../../lib/notifications';
@@ -106,7 +107,8 @@ export default function DashboardScreen() {
         text: 'Sí, cancelar', style: 'destructive',
         onPress: async () => {
           setCancelando(r.id);
-          await supabase.from('reservas').update({ estado: 'cancelada' }).eq('id', r.id);
+          const { ok, error } = await cancelarReservaApi(r.id);
+          if (!ok) Alert.alert('Error', error ?? 'No se pudo cancelar la reservación.');
           await load();
           setCancelando(null);
         },
