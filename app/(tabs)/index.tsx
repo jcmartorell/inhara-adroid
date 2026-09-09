@@ -46,6 +46,7 @@ export default function DashboardScreen() {
   const [planNombre, setPlanNombre] = useState('');
   const [reservasProximas, setReservasProximas] = useState<ReservaProxima[]>([]);
   const [notisSinLeer, setNotisSinLeer] = useState<{ id: string; titulo: string }[]>([]);
+  const [mensajesSinLeer, setMensajesSinLeer] = useState<{ id: string; titulo: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [cancelando, setCancelando] = useState<string | null>(null);
@@ -63,12 +64,13 @@ export default function DashboardScreen() {
       supabase.from('asistencias').select('id').eq('user_id', userId),
       supabase.from('suscripciones').select('*').eq('user_id', userId).eq('estado', 'activo').limit(1),
       supabase.from('reservas').select('id, clase_id, estado').eq('user_id', userId).eq('estado', 'confirmada'),
-      supabase.from('notificaciones').select('id, titulo').eq('user_id', userId).eq('leida', false).order('created_at', { ascending: false }),
+      supabase.from('notificaciones').select('id, titulo, tipo').eq('user_id', userId).eq('leida', false).order('created_at', { ascending: false }),
     ]);
 
     if (prof?.[0]) setProfile(prof[0]);
     setTotalClases(asist?.length ?? 0);
-    setNotisSinLeer(notis ?? []);
+    setNotisSinLeer((notis ?? []).filter((n: any) => n.tipo !== 'mensaje'));
+    setMensajesSinLeer((notis ?? []).filter((n: any) => n.tipo === 'mensaje'));
 
     const susData = sus?.[0] ?? null;
     setSusActiva(susData);
@@ -163,6 +165,20 @@ export default function DashboardScreen() {
             <Text style={styles.notiBannerSub} numberOfLines={1}>{notisSinLeer[0].titulo}</Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color="#ffffff99" />
+        </TouchableOpacity>
+      )}
+
+      {/* Mensajes / encuestas sin leer */}
+      {mensajesSinLeer.length > 0 && (
+        <TouchableOpacity style={[styles.notiBanner, { backgroundColor: C.brown }]} onPress={() => router.push('/mensajes')} activeOpacity={0.85}>
+          <Ionicons name="mail" size={18} color={C.gold} />
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.notiBannerTitulo, { color: C.gold }]}>
+              {mensajesSinLeer.length === 1 ? 'Tienes 1 mensaje nuevo' : `Tienes ${mensajesSinLeer.length} mensajes nuevos`}
+            </Text>
+            <Text style={[styles.notiBannerSub, { color: C.gold + 'CC' }]} numberOfLines={1}>{mensajesSinLeer[0].titulo}</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={C.gold + '99'} />
         </TouchableOpacity>
       )}
 
