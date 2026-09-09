@@ -28,6 +28,10 @@ function formatFecha(f: string) {
   const d = new Date(f + 'T12:00:00');
   return `${DIAS[d.getDay()]} ${d.getDate()} ${MESES[d.getMonth()]}`;
 }
+function formatFechaCorta(f: string) {
+  const d = new Date(f + 'T12:00:00');
+  return `${d.getDate()} ${MESES[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`;
+}
 function formatHora(h: string) { return h.slice(0, 5); }
 function pad(n: number) { return String(n).padStart(2, '0'); }
 function fechaHoy() {
@@ -167,6 +171,9 @@ export default function DashboardScreen() {
         <View style={styles.paqueteLeft}>
           <Text style={styles.paqueteLabel}>PAQUETE ACTIVO</Text>
           <Text style={styles.paqueteNombre}>{planNombre || 'Sin paquete activo'}</Text>
+          {susActiva?.fecha_fin ? (
+            <Text style={styles.paqueteVence}>Vence {formatFechaCorta(susActiva.fecha_fin)}</Text>
+          ) : null}
         </View>
         <View style={styles.paqueteRight}>
           <Text style={styles.paqueteClasesNum}>
@@ -281,6 +288,7 @@ const styles = StyleSheet.create({
   paqueteLeft: { gap: 4 },
   paqueteLabel: { fontSize: 9, fontWeight: '700', color: C.textMuted, letterSpacing: 1 },
   paqueteNombre: { fontSize: 17, fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', color: C.text },
+  paqueteVence: { fontSize: 11, color: C.textMuted, marginTop: 2 },
   paqueteRight: { alignItems: 'center' },
   paqueteClasesNum: { fontSize: 34, fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', fontWeight: '300', color: C.accent },
   paqueteClasesLabel: { fontSize: 11, color: C.textSoft, marginTop: -4 },
