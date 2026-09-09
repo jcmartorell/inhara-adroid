@@ -91,7 +91,7 @@ export default function PaquetesScreen() {
           <View>
             <Text style={styles.activoNombre}>Plan activo: {planActivoNombre}</Text>
             <Text style={styles.activoClases}>
-              {susActiva?.ilimitado ? 'Clases ilimitadas' : `${susActiva?.clases_restantes ?? 0} clases restantes`}
+              {susActiva?.clases_restantes == null ? 'Clases ilimitadas' : `${susActiva.clases_restantes} clases restantes`}
             </Text>
           </View>
         </View>

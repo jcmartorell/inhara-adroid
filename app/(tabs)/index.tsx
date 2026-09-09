@@ -170,7 +170,7 @@ export default function DashboardScreen() {
         </View>
         <View style={styles.paqueteRight}>
           <Text style={styles.paqueteClasesNum}>
-            {susActiva?.ilimitado ? '∞' : susActiva?.clases_restantes != null ? String(susActiva.clases_restantes) : '0'}
+            {susActiva ? (susActiva.clases_restantes == null ? '∞' : String(susActiva.clases_restantes)) : '0'}
           </Text>
           <Text style={styles.paqueteClasesLabel}>clases</Text>
         </View>
