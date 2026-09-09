@@ -9,15 +9,20 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Linking,
 } from 'react-native';
 import { supabase } from '../../lib/supabase';
 import { C } from '../../constants/colors';
 
+const APP_URL = 'https://app.inharayoga.com';
+
 export default function LoginScreen() {
+  const [modo, setModo] = useState<'login' | 'recuperar'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [recuperarEnviado, setRecuperarEnviado] = useState(false);
 
   async function handleLogin() {
     if (!email.trim() || !password.trim()) {
@@ -31,6 +36,37 @@ export default function LoginScreen() {
     setLoading(false);
   }
 
+  async function handleRecuperar() {
+    if (!email.trim()) {
+      setError('Ingresa tu correo');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch(`${APP_URL}/api/auth/recuperar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? 'No se pudo enviar el correo');
+      } else {
+        setRecuperarEnviado(true);
+      }
+    } catch {
+      setError('No se pudo enviar el correo. Revisa tu conexión.');
+    }
+    setLoading(false);
+  }
+
+  function volverALogin() {
+    setModo('login');
+    setError('');
+    setRecuperarEnviado(false);
+  }
+
   return (
     <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
@@ -39,43 +75,91 @@ export default function LoginScreen() {
           <Text style={styles.logoSub}>YOGA STUDIO</Text>
         </View>
 
-        <View style={styles.form}>
-          <View style={styles.field}>
-            <Text style={styles.label}>CORREO</Text>
-            <TextInput
-              style={styles.input}
-              value={email}
-              onChangeText={setEmail}
-              placeholder=""
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              placeholderTextColor="rgba(255,255,255,0.3)"
-            />
-          </View>
-
-          <View style={styles.field}>
-            <Text style={styles.label}>CONTRASEÑA</Text>
-            <TextInput
-              style={styles.input}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              placeholder=""
-              placeholderTextColor="rgba(255,255,255,0.3)"
-            />
-          </View>
-
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-          <TouchableOpacity style={styles.btn} onPress={handleLogin} disabled={loading} activeOpacity={0.85}>
-            {loading ? (
-              <ActivityIndicator color="#fff" />
+        {modo === 'recuperar' ? (
+          <View style={styles.form}>
+            {recuperarEnviado ? (
+              <>
+                <Text style={styles.infoText}>
+                  Si {email.trim()} tiene una cuenta, te enviamos un link para crear una nueva contraseña.
+                </Text>
+                <TouchableOpacity onPress={volverALogin} activeOpacity={0.7}>
+                  <Text style={styles.linkText}>← Volver a iniciar sesión</Text>
+                </TouchableOpacity>
+              </>
             ) : (
-              <Text style={styles.btnText}>Entrar</Text>
+              <>
+                <View style={styles.field}>
+                  <Text style={styles.label}>CORREO</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={email}
+                    onChangeText={setEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    placeholderTextColor="rgba(255,255,255,0.3)"
+                  />
+                </View>
+
+                {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+                <TouchableOpacity style={styles.btn} onPress={handleRecuperar} disabled={loading} activeOpacity={0.85}>
+                  {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Enviar link</Text>}
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={volverALogin} activeOpacity={0.7}>
+                  <Text style={styles.linkText}>← Volver a iniciar sesión</Text>
+                </TouchableOpacity>
+              </>
             )}
-          </TouchableOpacity>
-        </View>
+          </View>
+        ) : (
+          <View style={styles.form}>
+            <View style={styles.field}>
+              <Text style={styles.label}>CORREO</Text>
+              <TextInput
+                style={styles.input}
+                value={email}
+                onChangeText={setEmail}
+                placeholder=""
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                placeholderTextColor="rgba(255,255,255,0.3)"
+              />
+            </View>
+
+            <View style={styles.field}>
+              <Text style={styles.label}>CONTRASEÑA</Text>
+              <TextInput
+                style={styles.input}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                placeholder=""
+                placeholderTextColor="rgba(255,255,255,0.3)"
+              />
+            </View>
+
+            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+            <TouchableOpacity style={styles.btn} onPress={handleLogin} disabled={loading} activeOpacity={0.85}>
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.btnText}>Entrar</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => { setModo('recuperar'); setError(''); }} activeOpacity={0.7}>
+              <Text style={styles.linkText}>¿Olvidaste tu contraseña?</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => Linking.openURL(`${APP_URL}/auth/registro`)} activeOpacity={0.7}>
+              <Text style={styles.linkText}>¿No tienes cuenta? Crear cuenta</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -112,6 +196,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.15)',
   },
   errorText: { fontSize: 13, color: '#FFAAAA', textAlign: 'center' },
+  infoText: { fontSize: 14, color: C.gold, textAlign: 'center', lineHeight: 20 },
+  linkText: { fontSize: 13, color: C.gold + 'CC', textAlign: 'center', marginTop: 4 },
   btn: {
     height: 50,
     backgroundColor: C.accent,
