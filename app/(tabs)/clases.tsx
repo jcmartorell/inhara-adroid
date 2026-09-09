@@ -76,7 +76,7 @@ export default function ClasesScreen() {
   }
 
   async function loadMaestras() {
-    const { data } = await supabase.from('profiles').select('id,nombre').eq('rol', 'maestra');
+    const { data } = await supabase.from('maestras').select('id,nombre');
     const map: Record<string, string> = {};
     for (const m of data ?? []) {
       if (m.nombre) map[m.id] = m.nombre;
