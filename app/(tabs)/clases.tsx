@@ -1,10 +1,11 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, Platform,
-  TouchableOpacity, ActivityIndicator, RefreshControl, Alert,
+  TouchableOpacity, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { supabase } from '../../lib/supabase';
 import { reservarClase, cancelarReserva } from '../../lib/bookings';
+import { confirmar, avisar } from '../../lib/alert';
 import { C } from '../../constants/colors';
 
 interface Clase {
@@ -101,14 +102,14 @@ export default function ClasesScreen() {
   async function reservar(clase: Clase) {
     if (!userId) return;
     if (new Date(`${clase.fecha}T${clase.hora}`).getTime() <= Date.now()) {
-      Alert.alert('Clase ya iniciada', 'Esta clase ya empezó y no se puede reservar.');
+      avisar('Clase ya iniciada', 'Esta clase ya empezó y no se puede reservar.');
       await loadClases();
       return;
     }
     setProcesando(clase.id);
     const { ok, error } = await reservarClase(clase.id);
     if (!ok) {
-      Alert.alert('Error', error ?? 'No se pudo completar la reservación.');
+      avisar('Error', error ?? 'No se pudo completar la reservación.');
     } else {
       await Promise.all([loadClases(), loadReservas(userId)]);
     }
@@ -119,19 +120,13 @@ export default function ClasesScreen() {
     if (!userId) return;
     const reserva = reservas.find(r => r.clase_id === clase.id);
     if (!reserva) return;
-    Alert.alert('Cancelar reservación', `¿Cancelar ${clase.titulo} el ${formatFecha(clase.fecha)}?`, [
-      { text: 'No', style: 'cancel' },
-      {
-        text: 'Sí, cancelar', style: 'destructive',
-        onPress: async () => {
-          setProcesando(clase.id);
-          const { ok, error } = await cancelarReserva(reserva.id);
-          if (!ok) Alert.alert('Error', error ?? 'No se pudo cancelar la reservación.');
-          await Promise.all([loadClases(), loadReservas(userId)]);
-          setProcesando(null);
-        },
-      },
-    ]);
+    const confirmado = await confirmar('Cancelar reservación', `¿Cancelar ${clase.titulo} el ${formatFecha(clase.fecha)}?`);
+    if (!confirmado) return;
+    setProcesando(clase.id);
+    const { ok, error } = await cancelarReserva(reserva.id);
+    if (!ok) avisar('Error', error ?? 'No se pudo cancelar la reservación.');
+    await Promise.all([loadClases(), loadReservas(userId)]);
+    setProcesando(null);
   }
 
   if (loading) {

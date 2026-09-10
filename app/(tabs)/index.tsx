@@ -1,12 +1,13 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, Platform,
-  TouchableOpacity, ActivityIndicator, Alert, RefreshControl,
+  TouchableOpacity, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { cancelarReserva as cancelarReservaApi } from '../../lib/bookings';
+import { confirmar, avisar } from '../../lib/alert';
 import { C } from '../../constants/colors';
 import { getNivel, getProgresoPct } from '../../lib/camino';
 import { registrarPushToken } from '../../lib/notifications';
@@ -119,19 +120,13 @@ export default function DashboardScreen() {
   const onRefresh = useCallback(() => { setRefreshing(true); load(); }, []);
 
   async function cancelarReserva(r: ReservaProxima) {
-    Alert.alert('Cancelar clase', `¿Cancelar ${r.clase_titulo} el ${formatFecha(r.clase_fecha)}?`, [
-      { text: 'No', style: 'cancel' },
-      {
-        text: 'Sí, cancelar', style: 'destructive',
-        onPress: async () => {
-          setCancelando(r.id);
-          const { ok, error } = await cancelarReservaApi(r.id);
-          if (!ok) Alert.alert('Error', error ?? 'No se pudo cancelar la reservación.');
-          await load();
-          setCancelando(null);
-        },
-      },
-    ]);
+    const confirmado = await confirmar('Cancelar clase', `¿Cancelar ${r.clase_titulo} el ${formatFecha(r.clase_fecha)}?`);
+    if (!confirmado) return;
+    setCancelando(r.id);
+    const { ok, error } = await cancelarReservaApi(r.id);
+    if (!ok) avisar('Error', error ?? 'No se pudo cancelar la reservación.');
+    await load();
+    setCancelando(null);
   }
 
   const router = useRouter();
