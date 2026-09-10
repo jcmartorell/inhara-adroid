@@ -21,6 +21,15 @@ interface ReservaProxima {
   clase_hora_fin: string;
 }
 
+interface Evento {
+  id: string;
+  titulo: string;
+  fecha: string;
+  hora: string;
+  lugar: string | null;
+  foto_url: string | null;
+}
+
 const DIAS = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
 const MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
 
@@ -45,6 +54,7 @@ export default function DashboardScreen() {
   const [susActiva, setSusActiva] = useState<Suscripcion | null>(null);
   const [planNombre, setPlanNombre] = useState('');
   const [reservasProximas, setReservasProximas] = useState<ReservaProxima[]>([]);
+  const [eventos, setEventos] = useState<Evento[]>([]);
   const [notisSinLeer, setNotisSinLeer] = useState<{ id: string; titulo: string }[]>([]);
   const [mensajesSinLeer, setMensajesSinLeer] = useState<{ id: string; titulo: string }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,18 +69,20 @@ export default function DashboardScreen() {
     const userId = session.user.id;
     registrarPushToken(userId);
 
-    const [{ data: prof }, { data: asist }, { data: sus }, { data: reservas }, { data: notis }] = await Promise.all([
+    const [{ data: prof }, { data: asist }, { data: sus }, { data: reservas }, { data: notis }, { data: eventosData }] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', userId).limit(1),
       supabase.from('asistencias').select('id').eq('user_id', userId),
       supabase.from('suscripciones').select('*').eq('user_id', userId).eq('estado', 'activo').limit(1),
       supabase.from('reservas').select('id, clase_id, estado').eq('user_id', userId).eq('estado', 'confirmada'),
       supabase.from('notificaciones').select('id, titulo, tipo').eq('user_id', userId).eq('leida', false).order('created_at', { ascending: false }),
+      supabase.from('eventos').select('id, titulo, fecha, hora, lugar, foto_url').eq('activo', true).gte('fecha', fechaHoy()).order('fecha').order('hora'),
     ]);
 
     if (prof?.[0]) setProfile(prof[0]);
     setTotalClases(asist?.length ?? 0);
     setNotisSinLeer((notis ?? []).filter((n: any) => n.tipo !== 'mensaje'));
     setMensajesSinLeer((notis ?? []).filter((n: any) => n.tipo === 'mensaje'));
+    setEventos(eventosData ?? []);
 
     const susData = sus?.[0] ?? null;
     setSusActiva(susData);
@@ -249,6 +261,27 @@ export default function DashboardScreen() {
         ))
       )}
 
+      {/* Eventos próximos */}
+      {eventos.length > 0 && (
+        <>
+          <View style={styles.seccionHeader}>
+            <Text style={styles.seccionTitulo}>Eventos</Text>
+          </View>
+          {eventos.map((ev) => (
+            <View key={ev.id} style={styles.eventoCard}>
+              <View style={styles.reservaHoraBlock}>
+                <Text style={styles.reservaHora}>{formatFecha(ev.fecha).split(' ')[1]}</Text>
+                <Text style={styles.reservaHoraFin}>{formatFecha(ev.fecha).split(' ')[2]}</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.reservaTitulo}>{ev.titulo}</Text>
+                <Text style={styles.reservaFecha}>{formatHora(ev.hora)} hrs{ev.lugar ? ` · ${ev.lugar}` : ''}</Text>
+              </View>
+            </View>
+          ))}
+        </>
+      )}
+
       {/* Nivel El Camino */}
       <View style={styles.nivelCard}>
         <View style={styles.nivelHeader}>
@@ -324,6 +357,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 2,
     borderLeftWidth: 3, borderLeftColor: C.accent,
+  },
+  eventoCard: {
+    backgroundColor: C.white, borderRadius: 14, padding: 14,
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 2,
+    borderLeftWidth: 3, borderLeftColor: C.gold,
   },
   reservaLeft: { flexDirection: 'row', alignItems: 'center', gap: 14, flex: 1 },
   reservaHoraBlock: { alignItems: 'center', minWidth: 42 },

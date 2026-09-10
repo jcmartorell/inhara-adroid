@@ -58,6 +58,7 @@ export default function MensajesScreen() {
       .from('digest_envios')
       .select('*, digest:digests(*)')
       .eq('user_id', session.user.id)
+      .eq('oculto', false)
       .order('created_at', { ascending: false });
     const lista = (data ?? []) as Envio[];
     setEnvios(lista);
@@ -66,6 +67,11 @@ export default function MensajesScreen() {
       await supabase.from('digest_envios').update({ leido: true }).in('id', noLeidos.map((e) => e.id));
     }
     setLoading(false);
+  }
+
+  async function ocultar(envioId: string) {
+    setEnvios((prev) => prev.filter((e) => e.id !== envioId));
+    await supabase.from('digest_envios').update({ oculto: true }).eq('id', envioId);
   }
 
   async function responderEstrellas(envioId: string, estrellas: number) {
@@ -109,9 +115,17 @@ export default function MensajesScreen() {
       {visibles.map((e) => {
         const d = e.digest!;
         const respondido = !!e.respondido_at;
+        const puedeOcultar = d.tipo === 'mensaje' || respondido;
         return (
           <View key={e.id} style={styles.card}>
-            <Text style={styles.titulo}>{d.titulo}</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+              <Text style={[styles.titulo, { flex: 1 }]}>{d.titulo}</Text>
+              {puedeOcultar && (
+                <TouchableOpacity onPress={() => ocultar(e.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Text style={styles.cerrarBtn}>✕</Text>
+                </TouchableOpacity>
+              )}
+            </View>
             {d.contenido ? <Text style={styles.contenido}>{d.contenido}</Text> : null}
 
             {d.tipo === 'satisfaccion' && (
@@ -184,6 +198,7 @@ const styles = StyleSheet.create({
   gracias: { fontSize: 12, color: C.textSoft },
   respondidoTexto: { fontSize: 13, color: '#2A6A40' },
   leido: { fontSize: 11, color: C.textMuted },
+  cerrarBtn: { fontSize: 16, color: C.textMuted, paddingHorizontal: 2 },
 
   opcionBtn: { padding: 12, borderWidth: 1, borderColor: '#E0D5C8', borderRadius: 8, backgroundColor: C.white },
   opcionTexto: { fontSize: 13, color: C.text },
