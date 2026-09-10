@@ -24,6 +24,7 @@ interface Envio {
   id: string;
   digest: Digest | null;
   leido: boolean;
+  oculto?: boolean;
   respuesta_estrellas: number | null;
   respuesta_opcion: number | null;
   respuesta_texto: string | null;
@@ -58,14 +59,19 @@ export default function MensajesScreen() {
       .from('digest_envios')
       .select('*, digest:digests(*)')
       .eq('user_id', session.user.id)
-      .eq('oculto', false)
       .order('created_at', { ascending: false });
-    const lista = (data ?? []) as Envio[];
+    // Filtrado en JS (no en el query) por si la columna "oculto" todavía no
+    // existe en Supabase — así nunca rompe la pantalla completa por un
+    // error de "column does not exist".
+    const lista = ((data ?? []) as Envio[]).filter((e) => !e.oculto);
     setEnvios(lista);
     const noLeidos = lista.filter((e) => !e.leido);
     if (noLeidos.length) {
       await supabase.from('digest_envios').update({ leido: true }).in('id', noLeidos.map((e) => e.id));
     }
+    // Quitar el banner "tienes N mensajes nuevos" del home
+    await supabase.from('notificaciones').update({ leida: true })
+      .eq('user_id', session.user.id).eq('tipo', 'mensaje').eq('leida', false);
     setLoading(false);
   }
 
