@@ -11,6 +11,9 @@ import { confirmar, avisar } from '../../lib/alert';
 import { C } from '../../constants/colors';
 import { getNivel, getProgresoPct } from '../../lib/camino';
 import { registrarPushToken } from '../../lib/notifications';
+import { hoyEstudio } from '../../lib/tiempo';
+import { elegirSuscripcionActual } from '../../lib/suscripcion';
+import { cargarEnvios, resumen } from '../../lib/mensajes';
 import type { Profile, Suscripcion } from '../../lib/models';
 
 interface ReservaProxima {
@@ -43,11 +46,6 @@ function formatFechaCorta(f: string) {
   return `${d.getDate()} ${MESES[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`;
 }
 function formatHora(h: string) { return h.slice(0, 5); }
-function pad(n: number) { return String(n).padStart(2, '0'); }
-function fechaHoy() {
-  const d = new Date();
-  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-}
 
 export default function DashboardScreen() {
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -57,7 +55,7 @@ export default function DashboardScreen() {
   const [reservasProximas, setReservasProximas] = useState<ReservaProxima[]>([]);
   const [eventos, setEventos] = useState<Evento[]>([]);
   const [notisSinLeer, setNotisSinLeer] = useState<{ id: string; titulo: string }[]>([]);
-  const [mensajesSinLeer, setMensajesSinLeer] = useState<{ id: string; titulo: string }[]>([]);
+  const [mensajes, setMensajes] = useState<{ sinLeer: number; porContestar: number; total: number; titulo: string }>({ sinLeer: 0, porContestar: 0, total: 0, titulo: '' });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [cancelando, setCancelando] = useState<string | null>(null);
@@ -70,22 +68,25 @@ export default function DashboardScreen() {
     const userId = session.user.id;
     registrarPushToken(userId);
 
-    const [{ data: prof }, { data: asist }, { data: sus }, { data: reservas }, { data: notis }, { data: eventosData }] = await Promise.all([
+    const [{ data: prof }, { data: asist }, { data: sus }, { data: reservas }, { data: notis }, { data: eventosData }, { envios }] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', userId).limit(1),
       supabase.from('asistencias').select('id').eq('user_id', userId),
-      supabase.from('suscripciones').select('*').eq('user_id', userId).eq('estado', 'activo').limit(1),
+      supabase.from('suscripciones').select('*').eq('user_id', userId).eq('estado', 'activo').gte('fecha_fin', hoyEstudio()),
       supabase.from('reservas').select('id, clase_id, estado').eq('user_id', userId).eq('estado', 'confirmada'),
       supabase.from('notificaciones').select('id, titulo, tipo').eq('user_id', userId).eq('leida', false).order('created_at', { ascending: false }),
-      supabase.from('eventos').select('id, titulo, fecha, hora, lugar, foto_url').eq('activo', true).gte('fecha', fechaHoy()).order('fecha').order('hora'),
+      supabase.from('eventos').select('id, titulo, fecha, hora, lugar, foto_url').eq('activo', true).gte('fecha', hoyEstudio()).order('fecha').order('hora'),
+      cargarEnvios(),
     ]);
 
     if (prof?.[0]) setProfile(prof[0]);
     setTotalClases(asist?.length ?? 0);
     setNotisSinLeer((notis ?? []).filter((n: any) => n.tipo !== 'mensaje'));
-    setMensajesSinLeer((notis ?? []).filter((n: any) => n.tipo === 'mensaje'));
+    const r = resumen(envios);
+    const pendiente = envios.find((e) => !e.leido || (e.digest.tipo !== 'mensaje' && !e.respondido_at));
+    setMensajes({ ...r, titulo: pendiente?.digest.titulo ?? '' });
     setEventos(eventosData ?? []);
 
-    const susData = sus?.[0] ?? null;
+    const susData = elegirSuscripcionActual(sus as any[]);
     setSusActiva(susData);
 
     if (susData?.plan_id) {
@@ -100,7 +101,7 @@ export default function DashboardScreen() {
         .from('clases')
         .select('id, titulo, fecha, hora, hora_fin')
         .in('id', ids)
-        .gte('fecha', fechaHoy())
+        .gte('fecha', hoyEstudio())
         .order('fecha').order('hora');
 
       const proximas: ReservaProxima[] = (clases ?? []).flatMap((c: any) => {
@@ -123,8 +124,9 @@ export default function DashboardScreen() {
     const confirmado = await confirmar('Cancelar clase', `¿Cancelar ${r.clase_titulo} el ${formatFecha(r.clase_fecha)}?`);
     if (!confirmado) return;
     setCancelando(r.id);
-    const { ok, error } = await cancelarReservaApi(r.id);
+    const { ok, error, penalizada } = await cancelarReservaApi(r.id);
     if (!ok) avisar('Error', error ?? 'No se pudo cancelar la reservación.');
+    else if (penalizada) avisar('Reservación cancelada', 'Como faltaba muy poco para la clase, no se devolvió el crédito (según las políticas de cancelación).');
     await load();
     setCancelando(null);
   }
@@ -175,15 +177,17 @@ export default function DashboardScreen() {
         </TouchableOpacity>
       )}
 
-      {/* Mensajes / encuestas sin leer */}
-      {mensajesSinLeer.length > 0 && (
+      {/* Mensajes / encuestas pendientes */}
+      {mensajes.total > 0 && (
         <TouchableOpacity style={[styles.notiBanner, { backgroundColor: C.brown }]} onPress={() => router.push('/mensajes')} activeOpacity={0.85}>
           <Ionicons name="mail" size={18} color={C.gold} />
           <View style={{ flex: 1 }}>
             <Text style={[styles.notiBannerTitulo, { color: C.gold }]}>
-              {mensajesSinLeer.length === 1 ? 'Tienes 1 mensaje nuevo' : `Tienes ${mensajesSinLeer.length} mensajes nuevos`}
+              {mensajes.porContestar > 0
+                ? (mensajes.porContestar === 1 ? 'Tienes 1 mensaje por contestar' : `Tienes ${mensajes.porContestar} mensajes por contestar`)
+                : (mensajes.sinLeer === 1 ? 'Tienes 1 mensaje nuevo' : `Tienes ${mensajes.sinLeer} mensajes nuevos`)}
             </Text>
-            <Text style={[styles.notiBannerSub, { color: C.gold + 'CC' }]} numberOfLines={1}>{mensajesSinLeer[0].titulo}</Text>
+            {mensajes.titulo ? <Text style={[styles.notiBannerSub, { color: C.gold + 'CC' }]} numberOfLines={1}>{mensajes.titulo}</Text> : null}
           </View>
           <Ionicons name="chevron-forward" size={18} color={C.gold + '99'} />
         </TouchableOpacity>
@@ -263,7 +267,12 @@ export default function DashboardScreen() {
             <Text style={styles.seccionTitulo}>Eventos</Text>
           </View>
           {eventos.map((ev) => (
-            <View key={ev.id} style={styles.eventoCard}>
+            <TouchableOpacity
+              key={ev.id}
+              style={styles.eventoCard}
+              activeOpacity={0.8}
+              onPress={() => router.push({ pathname: '/evento/[id]', params: { id: ev.id } } as any)}
+            >
               <View style={styles.reservaHoraBlock}>
                 <Text style={styles.reservaHora}>{formatFecha(ev.fecha).split(' ')[1]}</Text>
                 <Text style={styles.reservaHoraFin}>{formatFecha(ev.fecha).split(' ')[2]}</Text>
@@ -272,7 +281,8 @@ export default function DashboardScreen() {
                 <Text style={styles.reservaTitulo}>{ev.titulo}</Text>
                 <Text style={styles.reservaFecha}>{formatHora(ev.hora)} hrs{ev.lugar ? ` · ${ev.lugar}` : ''}</Text>
               </View>
-            </View>
+              <Ionicons name="chevron-forward" size={18} color={C.gold} />
+            </TouchableOpacity>
           ))}
         </>
       )}

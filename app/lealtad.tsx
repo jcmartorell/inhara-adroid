@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { supabase } from '../lib/supabase';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { C } from '../constants/colors';
 import { PREMIUM_SLUGS } from '../lib/camino';
 
@@ -48,6 +49,7 @@ function riesgoEstado(dias: number): { label: string; color: string } {
 }
 
 export default function LealtadScreen() {
+  const insets = useSafeAreaInsets();
   const [totalClases, setTotalClases] = useState(0);
   const [mesesEnInhara, setMesesEnInhara] = useState(0);
   const [mesesConsecutivos, setMesesConsecutivos] = useState(0);
@@ -141,7 +143,7 @@ export default function LealtadScreen() {
   }
 
   return (
-    <ScrollView style={styles.root} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+    <ScrollView style={styles.root} contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 32 }]} showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
         <Text style={styles.headerTitulo}>Beneficios</Text>
         <Text style={styles.headerSubtitulo}>The Inhara Community Circle</Text>

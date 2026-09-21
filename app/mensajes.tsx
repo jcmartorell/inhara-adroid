@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -8,35 +8,20 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   TextInput,
+  RefreshControl,
+  KeyboardAvoidingView,
 } from 'react-native';
-import { supabase } from '../lib/supabase';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { C } from '../constants/colors';
+import { avisar } from '../lib/alert';
+import { cargarEnvios, marcarLeidos, responder, ocultar, type Envio } from '../lib/mensajes';
 
-interface Digest {
-  id: string;
-  tipo: 'mensaje' | 'pregunta' | 'encuesta' | 'satisfaccion';
-  titulo: string;
-  contenido: string | null;
-  opciones: string[] | null;
-}
-
-interface Envio {
-  id: string;
-  digest: Digest | null;
-  leido: boolean;
-  oculto?: boolean;
-  respuesta_estrellas: number | null;
-  respuesta_opcion: number | null;
-  respuesta_texto: string | null;
-  respondido_at: string | null;
-}
-
-function Estrellas({ valor, onChange }: { valor: number; onChange: (n: number) => void }) {
+function Estrellas({ onChange, disabled }: { onChange: (n: number) => void; disabled?: boolean }) {
   return (
     <View style={{ flexDirection: 'row', gap: 6 }}>
       {[1, 2, 3, 4, 5].map((n) => (
-        <TouchableOpacity key={n} onPress={() => onChange(n)}>
-          <Text style={{ fontSize: 30, color: n <= valor ? '#D4A034' : '#E0D5C8' }}>★</Text>
+        <TouchableOpacity key={n} onPress={() => onChange(n)} disabled={disabled} hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}>
+          <Text style={{ fontSize: 34, color: '#E0D5C8' }}>★</Text>
         </TouchableOpacity>
       ))}
     </View>
@@ -44,156 +29,155 @@ function Estrellas({ valor, onChange }: { valor: number; onChange: (n: number) =
 }
 
 export default function MensajesScreen() {
+  const insets = useSafeAreaInsets();
   const [envios, setEnvios] = useState<Envio[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState('');
   const [borrador, setBorrador] = useState<Record<string, string>>({});
   const [enviando, setEnviando] = useState<string | null>(null);
 
-  useEffect(() => { load(); }, []);
-
-  async function load() {
-    setLoading(true);
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) { setLoading(false); return; }
-    const { data } = await supabase
-      .from('digest_envios')
-      .select('*, digest:digests(*)')
-      .eq('user_id', session.user.id)
-      .order('created_at', { ascending: false });
-    // Filtrado en JS (no en el query) por si la columna "oculto" todavía no
-    // existe en Supabase — así nunca rompe la pantalla completa por un
-    // error de "column does not exist".
-    const lista = ((data ?? []) as Envio[]).filter((e) => !e.oculto);
-    setEnvios(lista);
-    const noLeidos = lista.filter((e) => !e.leido);
-    if (noLeidos.length) {
-      await supabase.from('digest_envios').update({ leido: true }).in('id', noLeidos.map((e) => e.id));
-    }
-    // Quitar el banner "tienes N mensajes nuevos" del home
-    await supabase.from('notificaciones').update({ leida: true })
-      .eq('user_id', session.user.id).eq('tipo', 'mensaje').eq('leida', false);
+  const load = useCallback(async () => {
+    const r = await cargarEnvios();
+    setError(r.error ?? '');
+    setEnvios(r.envios);
     setLoading(false);
+    setRefreshing(false);
+    if (!r.error) marcarLeidos(); // quita el aviso "mensajes nuevos" del inicio
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function contestar(envioId: string, datos: { estrellas?: number; opcion?: number; texto?: string }) {
+    setEnviando(envioId);
+    const r = await responder(envioId, datos);
+    setEnviando(null);
+    if (!r.ok) avisar('No se pudo enviar', r.error ?? 'Intenta de nuevo.');
+    load();
   }
 
-  async function ocultar(envioId: string) {
+  async function quitar(envioId: string) {
     setEnvios((prev) => prev.filter((e) => e.id !== envioId));
-    await supabase.from('digest_envios').update({ oculto: true }).eq('id', envioId);
-  }
-
-  async function responderEstrellas(envioId: string, estrellas: number) {
-    setEnviando(envioId);
-    await supabase.from('digest_envios').update({ respuesta_estrellas: estrellas, respondido_at: new Date().toISOString() }).eq('id', envioId);
-    setEnviando(null);
-    load();
-  }
-  async function responderOpcion(envioId: string, opcion: number) {
-    setEnviando(envioId);
-    await supabase.from('digest_envios').update({ respuesta_opcion: opcion, respondido_at: new Date().toISOString() }).eq('id', envioId);
-    setEnviando(null);
-    load();
-  }
-  async function responderTexto(envioId: string) {
-    const texto = (borrador[envioId] ?? '').trim();
-    if (!texto) return;
-    setEnviando(envioId);
-    await supabase.from('digest_envios').update({ respuesta_texto: texto, respondido_at: new Date().toISOString() }).eq('id', envioId);
-    setEnviando(null);
-    load();
+    await ocultar(envioId);
   }
 
   if (loading) {
     return <View style={styles.center}><ActivityIndicator color={C.accent} size="large" /></View>;
   }
 
-  const visibles = envios.filter((e) => e.digest);
-
-  if (!visibles.length) {
+  if (error) {
     return (
       <View style={styles.center}>
-        <Text style={styles.emptyIcon}>📥</Text>
-        <Text style={styles.emptyText}>No tienes mensajes por ahora</Text>
+        <Text style={styles.emptyIcon}>⚠️</Text>
+        <Text style={styles.emptyText}>{error}</Text>
+        <TouchableOpacity onPress={() => { setLoading(true); load(); }} style={styles.reintentar}>
+          <Text style={styles.reintentarTexto}>Reintentar</Text>
+        </TouchableOpacity>
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.root} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-      {visibles.map((e) => {
-        const d = e.digest!;
-        const respondido = !!e.respondido_at;
-        const puedeOcultar = d.tipo === 'mensaje' || respondido;
-        return (
-          <View key={e.id} style={styles.card}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-              <Text style={[styles.titulo, { flex: 1 }]}>{d.titulo}</Text>
-              {puedeOcultar && (
-                <TouchableOpacity onPress={() => ocultar(e.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <Text style={styles.cerrarBtn}>✕</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-            {d.contenido ? <Text style={styles.contenido}>{d.contenido}</Text> : null}
-
-            {d.tipo === 'satisfaccion' && (
-              respondido ? (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <Text style={{ fontSize: 20, color: '#D4A034' }}>{'★'.repeat(e.respuesta_estrellas ?? 0)}</Text>
-                  <Text style={styles.gracias}>¡Gracias por tu respuesta!</Text>
-                </View>
-              ) : (
-                <Estrellas valor={0} onChange={(n) => responderEstrellas(e.id, n)} />
-              )
-            )}
-
-            {d.tipo === 'encuesta' && (
-              respondido ? (
-                <Text style={styles.respondidoTexto}>
-                  ✓ Elegiste: <Text style={{ fontWeight: '600' }}>{d.opciones?.[e.respuesta_opcion ?? -1]}</Text>
-                </Text>
-              ) : (
-                <View style={{ gap: 8 }}>
-                  {(d.opciones ?? []).map((op, i) => (
-                    <TouchableOpacity key={i} disabled={enviando === e.id} onPress={() => responderOpcion(e.id, i)} style={styles.opcionBtn}>
-                      <Text style={styles.opcionTexto}>{op}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              )
-            )}
-
-            {d.tipo === 'pregunta' && (
-              respondido ? (
-                <Text style={styles.respondidoTexto}>✓ Respondiste: <Text style={{ fontStyle: 'italic' }}>{e.respuesta_texto}</Text></Text>
-              ) : (
-                <View style={{ flexDirection: 'row', gap: 8 }}>
-                  <TextInput
-                    value={borrador[e.id] ?? ''}
-                    onChangeText={(t) => setBorrador((b) => ({ ...b, [e.id]: t }))}
-                    placeholder="Tu respuesta..."
-                    placeholderTextColor={C.textMuted}
-                    style={styles.input}
-                  />
-                  <TouchableOpacity disabled={enviando === e.id} onPress={() => responderTexto(e.id)} style={styles.enviarBtn}>
-                    <Text style={styles.enviarBtnTexto}>Enviar</Text>
-                  </TouchableOpacity>
-                </View>
-              )
-            )}
-
-            {d.tipo === 'mensaje' && <Text style={styles.leido}>Leído</Text>}
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScrollView
+        style={styles.root}
+        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 32 }]}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={C.accent} />}
+      >
+        {envios.length === 0 ? (
+          <View style={[styles.center, { paddingTop: 80 }]}>
+            <Text style={styles.emptyIcon}>📥</Text>
+            <Text style={styles.emptyText}>No tienes mensajes por ahora</Text>
           </View>
-        );
-      })}
-    </ScrollView>
+        ) : null}
+
+        {envios.map((e) => {
+          const d = e.digest;
+          const respondido = !!e.respondido_at;
+          const puedeOcultar = d.tipo === 'mensaje' || respondido;
+          return (
+            <View key={e.id} style={styles.card}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                <Text style={[styles.titulo, { flex: 1 }]}>{d.titulo}</Text>
+                {puedeOcultar && (
+                  <TouchableOpacity onPress={() => quitar(e.id)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                    <Text style={styles.cerrarBtn}>✕</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+              {d.contenido ? <Text style={styles.contenido}>{d.contenido}</Text> : null}
+
+              {d.tipo === 'satisfaccion' && (
+                respondido ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Text style={{ fontSize: 22, color: '#D4A034' }}>{'★'.repeat(e.respuesta_estrellas ?? 0)}</Text>
+                    <Text style={styles.gracias}>¡Gracias por tu respuesta!</Text>
+                  </View>
+                ) : (
+                  <Estrellas disabled={enviando === e.id} onChange={(n) => contestar(e.id, { estrellas: n })} />
+                )
+              )}
+
+              {d.tipo === 'encuesta' && (
+                respondido ? (
+                  <Text style={styles.respondidoTexto}>
+                    ✓ Elegiste: <Text style={{ fontWeight: '600' }}>{d.opciones?.[e.respuesta_opcion ?? -1]}</Text>
+                  </Text>
+                ) : (
+                  <View style={{ gap: 8 }}>
+                    {(d.opciones ?? []).map((op, i) => (
+                      <TouchableOpacity key={i} disabled={enviando === e.id} onPress={() => contestar(e.id, { opcion: i })} style={styles.opcionBtn}>
+                        <Text style={styles.opcionTexto}>{op}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )
+              )}
+
+              {d.tipo === 'pregunta' && (
+                respondido ? (
+                  <Text style={styles.respondidoTexto}>✓ Respondiste: <Text style={{ fontStyle: 'italic' }}>{e.respuesta_texto}</Text></Text>
+                ) : (
+                  <View style={{ gap: 8 }}>
+                    <TextInput
+                      value={borrador[e.id] ?? ''}
+                      onChangeText={(t) => setBorrador((b) => ({ ...b, [e.id]: t }))}
+                      placeholder="Escribe tu respuesta..."
+                      placeholderTextColor={C.textMuted}
+                      style={styles.input}
+                      multiline
+                      maxLength={1000}
+                    />
+                    <TouchableOpacity
+                      disabled={enviando === e.id || !(borrador[e.id] ?? '').trim()}
+                      onPress={() => contestar(e.id, { texto: (borrador[e.id] ?? '').trim() })}
+                      style={[styles.enviarBtn, (enviando === e.id || !(borrador[e.id] ?? '').trim()) && { opacity: 0.5 }]}
+                    >
+                      <Text style={styles.enviarBtnTexto}>{enviando === e.id ? 'Enviando...' : 'Enviar respuesta'}</Text>
+                    </TouchableOpacity>
+                  </View>
+                )
+              )}
+
+              {d.tipo === 'mensaje' && <Text style={styles.leido}>Mensaje informativo</Text>}
+            </View>
+          );
+        })}
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg },
-  content: { padding: 16, gap: 12, paddingBottom: 32 },
-  center: { flex: 1, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center', gap: 12 },
+  content: { padding: 16, gap: 12 },
+  center: { flex: 1, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 24 },
   emptyIcon: { fontSize: 40 },
-  emptyText: { fontSize: 15, color: C.textSoft },
+  emptyText: { fontSize: 15, color: C.textSoft, textAlign: 'center' },
+  reintentar: { marginTop: 4, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8, backgroundColor: C.accent },
+  reintentarTexto: { color: '#fff', fontWeight: '600', fontSize: 14 },
 
   card: {
     backgroundColor: C.white, borderRadius: 14, padding: 18, gap: 10,
@@ -204,12 +188,15 @@ const styles = StyleSheet.create({
   gracias: { fontSize: 12, color: C.textSoft },
   respondidoTexto: { fontSize: 13, color: '#2A6A40' },
   leido: { fontSize: 11, color: C.textMuted },
+
+  opcionBtn: { padding: 14, borderWidth: 1, borderColor: '#E0D5C8', borderRadius: 10, backgroundColor: C.white },
+  opcionTexto: { fontSize: 14, color: C.text },
+
+  input: {
+    minHeight: 84, padding: 12, borderWidth: 1, borderColor: '#E0D5C8', borderRadius: 10,
+    fontSize: 14, color: C.text, textAlignVertical: 'top',
+  },
+  enviarBtn: { paddingVertical: 12, alignItems: 'center', backgroundColor: C.accent, borderRadius: 10 },
+  enviarBtnTexto: { fontSize: 14, color: 'white', fontWeight: '600' },
   cerrarBtn: { fontSize: 16, color: C.textMuted, paddingHorizontal: 2 },
-
-  opcionBtn: { padding: 12, borderWidth: 1, borderColor: '#E0D5C8', borderRadius: 8, backgroundColor: C.white },
-  opcionTexto: { fontSize: 13, color: C.text },
-
-  input: { flex: 1, padding: 10, borderWidth: 1, borderColor: '#E0D5C8', borderRadius: 8, fontSize: 13, color: C.text },
-  enviarBtn: { paddingHorizontal: 16, justifyContent: 'center', backgroundColor: C.accent, borderRadius: 8 },
-  enviarBtnTexto: { fontSize: 13, color: 'white', fontWeight: '600' },
 });

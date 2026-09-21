@@ -8,23 +8,32 @@ async function authHeaders() {
 }
 
 export async function reservarClase(claseId: string): Promise<{ ok: boolean; error?: string }> {
-  const res = await fetch(`${APP_URL}/api/bookings`, {
-    method: 'POST',
-    headers: await authHeaders(),
-    body: JSON.stringify({ claseId }),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) return { ok: false, error: data.error ?? 'No se pudo completar la reservación.' };
-  return { ok: true };
+  try {
+    const res = await fetch(`${APP_URL}/api/bookings`, {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify({ claseId }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return { ok: false, error: data.error ?? 'No se pudo completar la reservación.' };
+    return { ok: true };
+  } catch {
+    return { ok: false, error: 'No se pudo conectar. Revisa tu internet e intenta de nuevo.' };
+  }
 }
 
-export async function cancelarReserva(reservaId: string): Promise<{ ok: boolean; error?: string }> {
-  const res = await fetch(`${APP_URL}/api/bookings`, {
-    method: 'DELETE',
-    headers: await authHeaders(),
-    body: JSON.stringify({ reservaId }),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) return { ok: false, error: data.error ?? 'No se pudo cancelar la reservación.' };
-  return { ok: true };
+// penalizada = se canceló con muy poca anticipación y (según las políticas) no se devolvió el crédito.
+export async function cancelarReserva(reservaId: string): Promise<{ ok: boolean; error?: string; penalizada?: boolean }> {
+  try {
+    const res = await fetch(`${APP_URL}/api/bookings`, {
+      method: 'DELETE',
+      headers: await authHeaders(),
+      body: JSON.stringify({ reservaId }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return { ok: false, error: data.error ?? 'No se pudo cancelar la reservación.' };
+    return { ok: true, penalizada: !!data.penalizada };
+  } catch {
+    return { ok: false, error: 'No se pudo conectar. Revisa tu internet e intenta de nuevo.' };
+  }
 }

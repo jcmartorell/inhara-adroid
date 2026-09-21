@@ -7,6 +7,7 @@ const SECCIONES = [
   { emoji: '🧘', titulo: 'El Camino', subtitulo: '9 niveles de práctica', ruta: '/camino' },
   { emoji: '🤍', titulo: 'Beneficios', subtitulo: 'The Inhara Community Circle', ruta: '/lealtad' },
   { emoji: '🔔', titulo: 'Avisos', subtitulo: 'Noticias y comunicados de Inhara', ruta: '/avisos' },
+  { emoji: '✉️', titulo: 'Mensajes', subtitulo: 'Encuestas y preguntas de Inhara', ruta: '/mensajes' },
 ];
 
 export default function MasScreen() {

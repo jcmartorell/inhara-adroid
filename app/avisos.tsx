@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { supabase } from '../lib/supabase';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { C } from '../constants/colors';
 import type { Aviso } from '../lib/models';
 
@@ -37,6 +38,7 @@ function formatFecha(iso: string): string {
 }
 
 export default function AvisosScreen() {
+  const insets = useSafeAreaInsets();
   const [avisos, setAvisos] = useState<Aviso[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -77,7 +79,7 @@ export default function AvisosScreen() {
   }
 
   return (
-    <ScrollView style={styles.root} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+    <ScrollView style={styles.root} contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 32 }]} showsVerticalScrollIndicator={false}>
       {avisos.map((aviso) => (
         <View key={aviso.id} style={styles.card}>
           <View style={styles.cardHeader}>

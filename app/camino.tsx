@@ -9,10 +9,12 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { supabase } from '../lib/supabase';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { C } from '../constants/colors';
 import { NIVELES, getNivel, getProgresoPct } from '../lib/camino';
 
 export default function CaminoScreen() {
+  const insets = useSafeAreaInsets();
   const [totalClases, setTotalClases] = useState(0);
   const [esteMes, setEsteMes] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -48,7 +50,7 @@ export default function CaminoScreen() {
   }
 
   return (
-    <ScrollView style={styles.root} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+    <ScrollView style={styles.root} contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 32 }]} showsVerticalScrollIndicator={false}>
       {/* Hero nivel actual */}
       <View style={styles.hero}>
         <Text style={styles.heroBadge}>NIVEL {nivel.num} DE 11 · {nivel.patanjali.toUpperCase()}</Text>

@@ -7,8 +7,12 @@ import type { Session } from '@supabase/supabase-js';
 import { Platform } from 'react-native';
 import { C } from '../constants/colors';
 
-function pantallaParaTipo(tipo: string | undefined) {
-  return tipo === 'mensaje' ? '/mensajes' : '/avisos';
+// A dónde lleva tocar una notificación push según lo que trae el payload.
+function destinoNotificacion(data: Record<string, any> | undefined) {
+  if (data?.tipo === 'mensaje') return '/mensajes';
+  if (data?.tipo === 'evento' && data?.eventoId) return `/evento/${data.eventoId}`;
+  if (data?.tipo === 'lista_espera') return '/(tabs)/clases';
+  return '/avisos';
 }
 
 export default function RootLayout() {
@@ -26,8 +30,7 @@ export default function RootLayout() {
   useEffect(() => {
     // Tap en la notificación push con la app ya abierta (foreground o background)
     const sub = Notifications.addNotificationResponseReceivedListener((response) => {
-      const tipo = response.notification.request.content.data?.tipo as string | undefined;
-      router.push(pantallaParaTipo(tipo) as any);
+      router.push(destinoNotificacion(response.notification.request.content.data as any) as any);
     });
     return () => sub.remove();
   }, []);
@@ -43,8 +46,7 @@ export default function RootLayout() {
       // App abierta desde cero tocando la notificación — no dispara el listener de arriba
       Notifications.getLastNotificationResponseAsync().then((response) => {
         if (!response) return;
-        const tipo = response.notification.request.content.data?.tipo as string | undefined;
-        router.push(pantallaParaTipo(tipo) as any);
+        router.push(destinoNotificacion(response.notification.request.content.data as any) as any);
       });
     }
   }, [session, segments]);
@@ -73,6 +75,7 @@ export default function RootLayout() {
         <Stack.Screen name="lealtad" options={{ title: 'Beneficios', ...headerStyle }} />
         <Stack.Screen name="avisos" options={{ title: 'Avisos', ...headerStyle }} />
         <Stack.Screen name="mensajes" options={{ title: 'Mensajes', ...headerStyle }} />
+        <Stack.Screen name="evento/[id]" options={{ title: 'Evento', ...headerStyle }} />
       </Stack>
     </>
   );

@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
 import { Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { C } from '../../constants/colors';
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
@@ -16,6 +17,11 @@ function TabIcon({ name, focused }: { name: IoniconsName; focused: boolean }) {
 }
 
 export default function TabsLayout() {
+  // Altura fija (62) hacía que en Androids con botones/gestos de navegación el sistema
+  // tapara los íconos y etiquetas: se suma el área segura inferior del dispositivo.
+  const insets = useSafeAreaInsets();
+  const abajo = Math.max(insets.bottom, 8);
+
   return (
     <Tabs
       screenOptions={{
@@ -25,9 +31,9 @@ export default function TabsLayout() {
           backgroundColor: '#FEFCF9',
           borderTopColor: C.border,
           borderTopWidth: 1,
-          paddingBottom: Platform.OS === 'ios' ? 22 : 8,
+          paddingBottom: abajo,
           paddingTop: 6,
-          height: Platform.OS === 'ios' ? 82 : 62,
+          height: 54 + abajo,
         },
         tabBarLabelStyle: { fontSize: 11, fontWeight: '500', marginTop: 2 },
         headerStyle: { backgroundColor: C.bg },

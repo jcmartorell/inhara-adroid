@@ -6,6 +6,7 @@ import {
 import { supabase } from '../../lib/supabase';
 import { reservarClase, cancelarReserva } from '../../lib/bookings';
 import { confirmar, avisar } from '../../lib/alert';
+import { hoyEstudio, claseYaEmpezo } from '../../lib/tiempo';
 import { C } from '../../constants/colors';
 
 interface Clase {
@@ -29,8 +30,6 @@ interface Reserva {
 const DIAS = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
 const MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
 
-function pad(n: number) { return String(n).padStart(2, '0'); }
-
 function formatFecha(fecha: string) {
   const d = new Date(fecha + 'T12:00:00');
   return `${DIAS[d.getDay()]} ${d.getDate()} ${MESES[d.getMonth()]}`;
@@ -40,10 +39,6 @@ function formatHora(hora: string) {
   return hora.slice(0, 5);
 }
 
-function fechaHoy() {
-  const d = new Date();
-  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-}
 
 export default function ClasesScreen() {
   const [clases, setClases] = useState<Clase[]>([]);
@@ -70,7 +65,7 @@ export default function ClasesScreen() {
       .from('clases')
       .select('id,titulo,fecha,hora,hora_fin,spots_disponibles,capacidad,ubicacion,maestra_id')
       .eq('activo', true)
-      .gte('fecha', fechaHoy())
+      .gte('fecha', hoyEstudio())
       .order('fecha')
       .order('hora');
     setClases(data ?? []);
@@ -101,7 +96,7 @@ export default function ClasesScreen() {
 
   async function reservar(clase: Clase) {
     if (!userId) return;
-    if (new Date(`${clase.fecha}T${clase.hora}`).getTime() <= Date.now()) {
+    if (claseYaEmpezo(clase.fecha, clase.hora)) {
       avisar('Clase ya iniciada', 'Esta clase ya empezó y no se puede reservar.');
       await loadClases();
       return;
@@ -123,8 +118,9 @@ export default function ClasesScreen() {
     const confirmado = await confirmar('Cancelar reservación', `¿Cancelar ${clase.titulo} el ${formatFecha(clase.fecha)}?`);
     if (!confirmado) return;
     setProcesando(clase.id);
-    const { ok, error } = await cancelarReserva(reserva.id);
+    const { ok, error, penalizada } = await cancelarReserva(reserva.id);
     if (!ok) avisar('Error', error ?? 'No se pudo cancelar la reservación.');
+    else if (penalizada) avisar('Reservación cancelada', 'Como faltaba muy poco para la clase, no se devolvió el crédito (según las políticas de cancelación).');
     await Promise.all([loadClases(), loadReservas(userId)]);
     setProcesando(null);
   }
@@ -164,7 +160,7 @@ export default function ClasesScreen() {
             const tieneReserva = reservas.some(r => r.clase_id === clase.id);
             const llena = clase.spots_disponibles <= 0 && !tieneReserva;
             const cargando = procesando === clase.id;
-            const pasada = new Date(`${clase.fecha}T${clase.hora}`).getTime() <= Date.now();
+            const pasada = claseYaEmpezo(clase.fecha, clase.hora);
 
             return (
               <View key={clase.id} style={[styles.claseCard, tieneReserva && styles.claseCardReservada, pasada && styles.claseCardPasada]}>

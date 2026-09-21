@@ -11,6 +11,8 @@ import {
 } from 'react-native';
 import { supabase } from '../../lib/supabase';
 import { C } from '../../constants/colors';
+import { hoyEstudio } from '../../lib/tiempo';
+import { elegirSuscripcionActual } from '../../lib/suscripcion';
 import type { Plan, Suscripcion } from '../../lib/models';
 
 const BANCO = {
@@ -54,11 +56,11 @@ export default function PaquetesScreen() {
 
     const [{ data: planesList }, { data: sus }] = await Promise.all([
       supabase.from('planes').select('*').eq('activo', true).order('precio'),
-      supabase.from('suscripciones').select('*').eq('user_id', session.user.id).eq('estado', 'activo').limit(1),
+      supabase.from('suscripciones').select('*').eq('user_id', session.user.id).eq('estado', 'activo').gte('fecha_fin', hoyEstudio()),
     ]);
 
     setPlanes(planesList ?? []);
-    const susData = sus?.[0] ?? null;
+    const susData = elegirSuscripcionActual(sus as any[]);
     setSusActiva(susData);
 
     if (susData?.plan_id) {
