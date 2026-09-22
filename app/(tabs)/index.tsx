@@ -11,7 +11,7 @@ import { confirmar, avisar } from '../../lib/alert';
 import { C } from '../../constants/colors';
 import { getNivel, getProgresoPct } from '../../lib/camino';
 import { registrarPushToken } from '../../lib/notifications';
-import { hoyEstudio } from '../../lib/tiempo';
+import { hoyEstudio, claseYaEmpezo } from '../../lib/tiempo';
 import { elegirSuscripcionActual } from '../../lib/suscripcion';
 import { cargarEnvios, resumen } from '../../lib/mensajes';
 import type { Profile, Suscripcion } from '../../lib/models';
@@ -105,6 +105,7 @@ export default function DashboardScreen() {
         .order('fecha').order('hora');
 
       const proximas: ReservaProxima[] = (clases ?? []).flatMap((c: any) => {
+        if (claseYaEmpezo(c.fecha, c.hora)) return [];
         const res = reservas.find((r: any) => r.clase_id === c.id);
         if (!res) return [];
         return [{ id: res.id, clase_id: c.id, clase_titulo: c.titulo, clase_fecha: c.fecha, clase_hora: c.hora, clase_hora_fin: c.hora_fin }];
