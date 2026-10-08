@@ -14,7 +14,7 @@
       "package": "com.inhara.yogastudio",
       "adaptiveIcon": {
         "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundColor": "#3B2B1E"
+        "backgroundColor": "#FAF6F0"
       }
     },
     "web": {
