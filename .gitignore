@@ -39,3 +39,8 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Credenciales de Android (NUNCA subir)
+credentials.json
+credentials/
+*.keystore
