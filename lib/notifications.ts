@@ -17,6 +17,15 @@ if (Platform.OS !== 'web') {
 }
 
 export async function registrarPushToken(userId: string) {
+  try {
+    await registrarPushTokenInterno(userId);
+  } catch (e) {
+    // Sin Firebase en Android el registro puede fallar: la app debe seguir normal.
+    console.log('Push no disponible:', e);
+  }
+}
+
+async function registrarPushTokenInterno(userId: string) {
   if (Platform.OS === 'web' || !Device.isDevice) return;
 
   if (Platform.OS === 'android') {
